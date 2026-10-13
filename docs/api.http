@@ -1,0 +1,149 @@
+### =====================================================================
+###  SmartChef · Peticiones de prueba (cliente HTTP de IntelliJ IDEA)
+###  Requisitos: aplicación arrancada (puerto 8080) y ejecutados
+###  script_smartchefdb.sql y datos_prueba_usuario.sql.
+###  Se ejecuta cada petición con el botón verde de la izquierda.
+### =====================================================================
+@host = http://localhost:8080
+@idUsuario = 1
+@idDespensa = 1
+@idLista = 1
+@idReceta = 1
+
+### ---------- CATÁLOGOS (dietas, alergenos, gravedades, unidades, tipos-comida, ubicaciones, motivos-baja)
+GET {{host}}/api/catalogos/dietas
+
+###
+GET {{host}}/api/catalogos/alergenos
+
+### ---------- RECETAS
+GET {{host}}/api/recetas?titulo=espag
+
+###
+GET {{host}}/api/recetas/rapidas?minutos=30
+
+### Detalle con las raciones de la receta
+GET {{host}}/api/recetas/{{idReceta}}
+
+### Detalle para 4 raciones (ingredientes y nutrición escalados)
+GET {{host}}/api/recetas/{{idReceta}}?raciones=4
+
+### ---------- ALERGIAS Y DIETAS DEL USUARIO
+PUT {{host}}/api/usuarios/{{idUsuario}}/alergias/GLUTEN
+Content-Type: application/json
+
+{ "gravedad": "ALERGIA_GRAVE", "notas": "celíaco" }
+
+###
+GET {{host}}/api/usuarios/{{idUsuario}}/alergias
+
+###
+PUT {{host}}/api/usuarios/{{idUsuario}}/dietas
+Content-Type: application/json
+
+{ "dietas": ["VEGETARIANA"] }
+
+###
+GET {{host}}/api/usuarios/{{idUsuario}}/dietas
+
+### Recetas seguras (sin sus alérgenos y aptas para sus dietas)
+GET {{host}}/api/usuarios/{{idUsuario}}/recetas-seguras
+
+### ¿Esta receta me afecta? (lista vacía = segura)
+GET {{host}}/api/usuarios/{{idUsuario}}/recetas/{{idReceta}}/avisos
+
+###
+DELETE {{host}}/api/usuarios/{{idUsuario}}/alergias/GLUTEN
+
+### ---------- DESPENSA
+GET {{host}}/api/usuarios/{{idUsuario}}/despensas
+
+###
+POST {{host}}/api/usuarios/{{idUsuario}}/despensas
+Content-Type: application/json
+
+{ "nombre": "Casa de la playa" }
+
+### Añadir 500 g de tomate (id de ingrediente 1); la caducidad se calcula sola
+POST {{host}}/api/usuarios/{{idUsuario}}/despensas/{{idDespensa}}/productos
+Content-Type: application/json
+
+{ "idIngrediente": 1, "cantidad": 500, "unidad": "G", "ubicacion": "NEVERA" }
+
+###
+GET {{host}}/api/usuarios/{{idUsuario}}/despensas/{{idDespensa}}/productos
+
+### Productos que caducan en los próximos 7 días
+GET {{host}}/api/usuarios/{{idUsuario}}/productos/caducan?dias=7
+
+### ¿Qué puedo cocinar con lo que tengo?
+GET {{host}}/api/usuarios/{{idUsuario}}/despensas/{{idDespensa}}/cocinables
+
+### Dar de baja un producto (cambia el 1 por el id que te devolvió el POST)
+POST {{host}}/api/usuarios/{{idUsuario}}/despensas/{{idDespensa}}/productos/1/baja
+Content-Type: application/json
+
+{ "motivo": "CONSUMIDO" }
+
+### ---------- LISTA DE LA COMPRA
+GET {{host}}/api/usuarios/{{idUsuario}}/listas-compra
+
+###
+POST {{host}}/api/usuarios/{{idUsuario}}/listas-compra
+Content-Type: application/json
+
+{ "nombre": "Fin de semana" }
+
+### Añadir lo que falta para cocinar la receta 1 para 4 raciones, comparando con la despensa
+POST {{host}}/api/usuarios/{{idUsuario}}/listas-compra/{{idLista}}/recetas
+Content-Type: application/json
+
+{ "idReceta": 1, "raciones": 4, "idDespensa": 1 }
+
+###
+GET {{host}}/api/usuarios/{{idUsuario}}/listas-compra/{{idLista}}
+
+### Marcar una línea como comprada (cambia el 1 por el id de la línea)
+PATCH {{host}}/api/usuarios/{{idUsuario}}/listas-compra/{{idLista}}/lineas/1
+Content-Type: application/json
+
+{ "comprado": true }
+
+### Pasar lo comprado a la despensa
+POST {{host}}/api/usuarios/{{idUsuario}}/listas-compra/{{idLista}}/trasladar-comprados
+Content-Type: application/json
+
+{ "idDespensa": 1 }
+
+### ---------- PLAN DE COMIDAS (fechas en formato AAAA-MM-DD)
+POST {{host}}/api/usuarios/{{idUsuario}}/plan-comidas
+Content-Type: application/json
+
+{ "fecha": "2026-10-09", "tipoComida": "COMIDA", "idReceta": 1, "raciones": 2, "horaAviso": "13:00:00" }
+
+###
+POST {{host}}/api/usuarios/{{idUsuario}}/plan-comidas
+Content-Type: application/json
+
+{ "fecha": "2026-10-09", "tipoComida": "CENA", "descripcion": "Cena fuera", "raciones": 1 }
+
+### Los 7 días a partir de esa fecha
+GET {{host}}/api/usuarios/{{idUsuario}}/plan-comidas?desde=2026-10-09
+
+### Calorías del día frente al objetivo (2000 kcal)
+GET {{host}}/api/usuarios/{{idUsuario}}/plan-comidas/resumen?fecha=2026-10-09
+
+### Marcar una comida como hecha (cambia el 1 por el id devuelto al planificar)
+POST {{host}}/api/usuarios/{{idUsuario}}/plan-comidas/1/completar
+
+### ---------- ERRORES (deben devolver 404 y 400 con formato ProblemDetail)
+GET {{host}}/api/recetas/9999
+
+###
+GET {{host}}/api/recetas/{{idReceta}}?raciones=0
+
+###
+POST {{host}}/api/usuarios/{{idUsuario}}/despensas
+Content-Type: application/json
+
+{ "nombre": "" }
